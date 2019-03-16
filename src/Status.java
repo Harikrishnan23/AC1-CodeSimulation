@@ -7,5 +7,9 @@ public class Status {
 	public Status() {
 		
 	}
-
+	public Status (String gear, double speed, double angle) {
+		this.gear = gear;
+		this.speed = speed;
+		this.angle = angle;
+	}
 }

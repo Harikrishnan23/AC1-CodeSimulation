@@ -13,11 +13,14 @@ public class Controller {
 	private String carState;
 	// created for simulation
 	private Location finalLocation;
+	private int locationIndex;
 
 	public Controller() {
 		this.initialiseSensors();
 		this.initialiseProcessors();
+		this.vehicleSystem = new VehicleSystem();
 		this.carState = "Idle";
+		this.locationIndex = 0;
 	}
 
 	private void initialiseSensors() {
@@ -32,23 +35,24 @@ public class Controller {
 		postProcessor = new PostProcessor();
 	}
 
-	public Location getCurrentCarLocation(int index) {
+	public Location getCurrentCarLocation() {
 		/*return some random location if index not equal to 20. If its 20 return final location*/
-		Location location = index == 20 ? finalLocation : new Location(27.628210, 76.181052);
+		Location location = this.locationIndex == 20 ? finalLocation : new Location(27.628210, 76.181052);
 		return location;
 	}
 
-	private void setCarState(int index) {
+	private void setCarState() {
 		/*In reality, this state setting will be done on the basis of inputs from sensors and 
 		 car's current location. For simulation, we are fixing the range of index within which we
 		 set specific values to drive/park the car*/
-		if(index < 14) {
+		
+		if(this.locationIndex < 14) {
 			this.carState = "Driving";
 		}
-		else if(index == 14) {
+		else if(this.locationIndex == 14) {
 			this.carState = "Slot_Reached";
 		}
-		else if(index > 14 && index <20) {
+		else if(this.locationIndex > 14 && this.locationIndex <20) {
 			this.carState = "Parking";
 		}
 		else {
@@ -56,6 +60,11 @@ public class Controller {
 		}
 	}
 	
+	private boolean evaluateSlot(Location location) {
+		Random randomGenerator = new Random();
+		int randomInt = randomGenerator.nextInt(2);
+		return randomInt == 1; //if randomInt is 1, return true else return false
+	}
 	private Status getDecision(String lastDecision) {
 		Status status = new Status();
 		//if lastDecision was empty then move forward
@@ -92,15 +101,52 @@ public class Controller {
 		
 	}
 	private String drive(String expectedCarState, Location location) {
-		int locationIndex = 0;
-		Location currentCarLocation = this.getCurrentCarLocation(locationIndex);
+		Location currentCarLocation = this.getCurrentCarLocation();
 		boolean slotEvaluated = false;
 		Status status = new Status();
+		String lastDecision = "";
 		while(currentCarLocation != location) {
-			
+			//send last decision for new status if decisionIndex > 0
+			status = (this.locationIndex == 14 || this.locationIndex == 20) ? new Status("Stop",0.0,0.0) : this.getDecision(lastDecision);
+			switch(status.gear) {
+				case "Forward":
+					this.vehicleSystem.forward(status.angle, status.speed);
+					lastDecision = "Forward";
+					System.out.println("Move forward at "+status.angle+" degrees at "+status.speed + " km/hr");
+					break;
+				case "Reverse":
+					this.vehicleSystem.reverse(status.angle, status.speed);
+					lastDecision = "Reverse";
+					System.out.println("Move back at "+status.angle+" degrees at "+status.speed + " km/hr");
+					break;
+				case "Stop":
+					this.vehicleSystem.applyBrakes();
+					lastDecision = "Stop";
+					System.out.println("Stop");
+					break;
+			}
+			this.setCarState();
+			if(expectedCarState.equalsIgnoreCase("Parked") && slotEvaluated == false) {
+				if(this.carState.equalsIgnoreCase("Slot_Reached")) {
+					System.out.println("Evaluate the slot reached");
+					slotEvaluated = true;
+					boolean slotOk = this.evaluateSlot(location);
+					if(!slotOk) {
+						System.out.println("Slot not fit. Move to next location");
+						break;
+						//break out of while loop because slot not ok
+						//if slot ok, continue driving using while loop to park car
+					}
+					else {
+						System.out.println("Slot ok. Park the cark");
+					}
+				}
+			}
+			this.locationIndex++;
+			currentCarLocation = this.getCurrentCarLocation();
 		}
-		int stateIndex = 0;
-		return "";
+		this.setCarState(); //update car state to latest state
+		return this.carState;
 	}
 
 	private void terminateProcessor() {
@@ -123,15 +169,8 @@ public class Controller {
 		cmd = scanner.nextLine();
 		Controller controller = new Controller();
 		Location userLocation = new Location();
-		// Location[] locations = controller.imageProcessor.getLocations();
-		// if (locations.length == 0) {
-		// System.out.println("no data");
-		// }
-		// for(int i=0; i<locations.length; i++) {
-		// System.out.println(locations[i]);
-		// }
 
-		if (cmd == "Park") {
+		if (cmd.equalsIgnoreCase("Park")) {
 			int maxSlots = 0, maxAttempts = 3, m, n;
 			outerloop: for (n = 0; n < maxAttempts; n++) {
 				Location[] locations = controller.imageProcessor.getLocations();
@@ -139,6 +178,7 @@ public class Controller {
 				for (m = 0; m < maxSlots; m++) {
 					controller.finalLocation = locations[m];
 					finalCarState = controller.drive("Parked", locations[m]);
+					System.out.println("Final car state for location "+m+" is "+finalCarState);
 					if (finalCarState == "Parked") {
 						break outerloop;
 					}
@@ -151,8 +191,6 @@ public class Controller {
 			userLocation.latitude = scanner.nextDouble();
 			System.out.println("Enter pickup location (longitude): ");
 			userLocation.longitude = scanner.nextDouble();
-			// initialize vehicle system only when its parked (off) and is about to unpark
-			controller.vehicleSystem = new VehicleSystem();
 			finalCarState = controller.drive("Un-parked", userLocation);
 		}
 
@@ -162,10 +200,12 @@ public class Controller {
 			controller.terminateProcessor();
 			controller.terminateVehicleServices();
 			controller.terminateSensors();
+			System.out.println("Parked successfully. Sensors and Car stopped");
 			break;
 
 		case "Parking failed":
 			// failure notification
+			System.out.println("Parking failed. Unparking the car to user's intial location");
 			controller.drive("Un-Parked", userLocation);
 			break;
 
@@ -173,6 +213,7 @@ public class Controller {
 			// unpark success notification
 			controller.terminateProcessor();
 			controller.terminateSensors();
+			System.out.println("Car unparked. Meet at the pin location");
 			break;
 
 		default:

@@ -14,6 +14,7 @@ public class Controller {
 	// created for simulation
 	private Location finalLocation;
 	private int locationIndex;
+	private int randomVar;
 
 	public Controller() {
 		this.initialiseSensors();
@@ -87,19 +88,31 @@ public class Controller {
 			else {
 				status.gear = lastDecision == "Forward" ? "Stop" : "Reverse";
 			}
+			if(status.gear.equalsIgnoreCase("Stop")) {
+				this.randomVar = randomInt;
+				if((lastDecision.equalsIgnoreCase("Forward") && randomInt == 1) || 
+					(lastDecision.equalsIgnoreCase("Reverse") && randomInt == 0)) {
+					System.out.println("Stop for change in direction");
+				}
+				else {
+					status.gear = "";
+					System.out.println("Collision detected. Stop");
+				}
+			}
 		}
 		
 		double upper = 540.0;
 		double lower = -540.0;
-		status.angle = Math.random() * (upper - lower) + lower;
+		status.angle = Math.round((Math.random() * (upper - lower) + lower)*100.0)/100.0;
 		
 		upper = 20.0;
 		lower = 0.0;
-		status.speed = Math.random() * (upper - lower) + lower;
+		status.speed = Math.round((Math.random() * (upper - lower) + lower)*100.0)/100.0;
 		
 		return status;
 		
 	}
+	
 	private String drive(String expectedCarState, Location location) {
 		Location currentCarLocation = this.getCurrentCarLocation();
 		boolean slotEvaluated = false;
@@ -107,27 +120,36 @@ public class Controller {
 		String lastDecision = "";
 		while(currentCarLocation != location) {
 			//send last decision for new status if decisionIndex > 0
+			
 			status = (this.locationIndex == 14 || this.locationIndex == 20) ? new Status("Stop",0.0,0.0) : this.getDecision(lastDecision);
 			switch(status.gear) {
 				case "Forward":
 					this.vehicleSystem.forward(status.angle, status.speed);
 					lastDecision = "Forward";
-					System.out.println("Move forward at "+status.angle+" degrees at "+status.speed + " km/hr");
 					break;
 				case "Reverse":
 					this.vehicleSystem.reverse(status.angle, status.speed);
 					lastDecision = "Reverse";
-					System.out.println("Move back at "+status.angle+" degrees at "+status.speed + " km/hr");
 					break;
 				case "Stop":
 					this.vehicleSystem.applyBrakes();
-					lastDecision = "Stop";
-					System.out.println("Stop");
+					if(this.randomVar == 0) {
+						this.vehicleSystem.forward(status.angle, status.speed);
+						lastDecision = "Forward";
+					}
+					else {
+						this.vehicleSystem.reverse(status.angle, status.speed);
+						lastDecision = "Reverse";
+					}						  
+//					lastDecision = "Stop";
+					break;
+				case "":
 					break;
 			}
 			this.setCarState();
 			if(expectedCarState.equalsIgnoreCase("Parked") && slotEvaluated == false) {
 				if(this.carState.equalsIgnoreCase("Slot_Reached")) {
+					System.out.println("Slot Reached. Stop");
 					System.out.println("Evaluate the slot reached");
 					slotEvaluated = true;
 					boolean slotOk = this.evaluateSlot(location);
@@ -138,7 +160,7 @@ public class Controller {
 						//if slot ok, continue driving using while loop to park car
 					}
 					else {
-						System.out.println("Slot ok. Park the cark");
+						System.out.println("Slot ok. Park the car.");
 					}
 				}
 			}
@@ -146,6 +168,7 @@ public class Controller {
 			currentCarLocation = this.getCurrentCarLocation();
 		}
 		this.setCarState(); //update car state to latest state
+		this.locationIndex = 0; //reinitialize the location index
 		return this.carState;
 	}
 
@@ -178,7 +201,7 @@ public class Controller {
 				for (m = 0; m < maxSlots; m++) {
 					controller.finalLocation = locations[m];
 					finalCarState = controller.drive("Parked", locations[m]);
-					System.out.println("Final car state for location "+m+" is "+finalCarState);
+					System.out.println("Final car state for location "+(m+1)+" is "+finalCarState);
 					if (finalCarState == "Parked") {
 						break outerloop;
 					}

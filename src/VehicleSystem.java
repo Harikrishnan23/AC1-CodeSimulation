@@ -17,7 +17,13 @@ public class VehicleSystem {
 		//Comunicate with the hardware system.
 	}
 	
-	public void applyBrakes() {
+	public void applyBrakes(boolean isStoppedForCollision) {
+		if(!isStoppedForCollision) {
+			System.out.println("Stopped due to change in direction");
+		}
+		else {
+			System.out.println("Stopped due to collision");
+		}
 		// Apply brakes
 		//Communicate with hardware system
 	}

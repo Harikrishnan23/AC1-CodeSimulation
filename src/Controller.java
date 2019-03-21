@@ -2,7 +2,7 @@ import java.util.Random;
 import java.util.Scanner;
 
 public class Controller {
-	private ImageProcessor imageProcessor;
+	public ImageProcessor imageProcessor;
 	private SignalProcessor signalProcessor;
 	private PostProcessor postProcessor;
 	private VehicleSystem vehicleSystem;
@@ -11,10 +11,12 @@ public class Controller {
 	private ProximitySensors proximitySensors;
 	private String carState;
 	// created for simulation
-	private Location finalLocation;
+	public Location finalLocation;
 	private int locationIndex;
 	private int randomVar;
-	private String cmd = "";
+	public String cmd = "";
+	public int slotEvalAttempt = -1;
+	public boolean isSlotFit = false;
 
 	public Controller() {
 		this.initialiseSensors();
@@ -41,7 +43,7 @@ public class Controller {
 		 * return some random location if index not equal to 20. If its 20 return final
 		 * location
 		 */
-		Location location = this.locationIndex == 20 ? finalLocation : new Location(27.628210, 76.181052);
+		Location location = this.locationIndex == 20 ? this.finalLocation : new Location(27.628210, 76.181052);
 		return location;
 	}
 
@@ -63,13 +65,14 @@ public class Controller {
 		}
 	}
 
-	private boolean evaluateSlot(Location location) {
-		Random randomGenerator = new Random();
-		int randomInt = randomGenerator.nextInt(2);
-		return randomInt == 1; // if randomInt is 1, return true else return false
+	public boolean evaluateSlot(Location location) {
+//		Random randomGenerator = new Random();
+//		int randomInt = randomGenerator.nextInt(2);
+//		return randomInt == 1; // if randomInt is 1, return true else return false
+		return this.isSlotFit;
 	}
 
-	private Status getDecision(String lastDecision) {
+	public Status getDecision(String lastDecision) {
 		Status status = new Status();
 		// if lastDecision was empty then move forward
 		if (lastDecision.isEmpty()) {
@@ -116,7 +119,8 @@ public class Controller {
 
 	}
 
-	private String drive(String expectedCarState, Location location) {
+	public String drive(String expectedCarState, Location location) {
+		this.finalLocation = location;
 		Location currentCarLocation = this.getCurrentCarLocation();
 		boolean slotEvaluated = false;
 		Status status = new Status();
@@ -173,85 +177,89 @@ public class Controller {
 		}
 		this.setCarState(); // update car state to latest state
 		this.locationIndex = 0; // reinitialize the location index
+		System.out.println("Car is " + this.carState);
 		return this.carState;
 	}
 
-	private void terminateProcessor() {
+	public void terminateProcessor() {
 		// code to turn off the processors.
 	}
 
-	private void terminateVehicleServices() {
+	public void terminateVehicleServices() {
 		// code to turn off the Vehicle system.
 	}
 
-	private void terminateSensors() {
+	public void terminateSensors() {
 		// code to turn off the sensor
 	}
-
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		String finalCarState = "";
-		Controller controller = new Controller();
-		Location userLocation = new Location();
-		Scanner scanner = new Scanner(System.in);
-		System.out.println("Enter the command(Park/Unpark)");
-		controller.cmd = scanner.nextLine();
-
-		if (controller.cmd.equalsIgnoreCase("Park")) {
-			int maxSlots = 0, maxAttempts = 3, m, n;
-			userLocation = new Location(29.11,11.88); //hardcoded for now but will be taken from GPS in case of app
-			finalCarState = "Parking failed";
-			outerloop: for (n = 0; n < maxAttempts; n++) {
-				Location[] locations = controller.imageProcessor.getLocations();
-				maxSlots = locations.length;
-				for (m = 0; m < maxSlots; m++) {
-					controller.finalLocation = locations[m];
-					finalCarState = controller.drive("Parked", locations[m]);
-					System.out.println("Final car state for location " + (m + 1) + " is " + finalCarState);
-					if (finalCarState == "Parked") {
-						break outerloop;
-					}
+	
+	public static String park(Controller controller) {
+		String finalCarState = "Parking failed";
+		int maxSlots = 0, maxAttempts = 3, m, n;
+		outerloop: for (n = 0; n < maxAttempts; n++) {
+			Location[] locations = controller.imageProcessor.getLocations();
+			maxSlots = locations.length;
+			for (m = 0; m < maxSlots; m++) {
+				controller.finalLocation = locations[m];
+				controller.isSlotFit = controller.slotEvalAttempt == (m+1) ;
+				finalCarState = controller.drive("Parked", locations[m]);
+				if (finalCarState == "Parked") {
+					break outerloop;
 				}
 			}
-			finalCarState = finalCarState != "Parked" ? "Parking Failed" : finalCarState;
-		} else if(controller.cmd.equalsIgnoreCase("unpark")){
-			System.out.println("Enter pickup location (latitude): ");
-			userLocation.latitude = scanner.nextDouble();
-			System.out.println("Enter pickup location (longitude): ");
-			userLocation.longitude = scanner.nextDouble();
-			controller.finalLocation = userLocation;
-			finalCarState = controller.drive("Un-parked", userLocation);
 		}
-		else {
-			System.out.println("Command invalid. Please try again!");
-			return;
-		}
+		finalCarState = finalCarState != "Parked" ? "Parking Failed" : finalCarState;
+		return finalCarState;	
+	}
+	
+	public void terminate(String finalCarState,Location userLocation) {
 		switch (finalCarState) {
 		case "Parked":
 			// success notification
-			controller.terminateProcessor();
-			controller.terminateVehicleServices();
-			controller.terminateSensors();
+			this.terminateProcessor();
+			this.terminateVehicleServices();
+			this.terminateSensors();
 			System.out.println("Parked successfully. Sensors and Car stopped");
 			break;
 
 		case "Parking failed":
 			// failure notification
+			this.finalLocation = userLocation;
 			System.out.println("Parking failed. Unparking the car to user's intial location");
-			controller.drive("Un-Parked", userLocation);
+			this.drive("Un-Parked", userLocation);
 			break;
 
 		case "Un-parked":
 			// unpark success notification
-			controller.terminateProcessor();
-			controller.terminateSensors();
+			this.terminateProcessor();
+			this.terminateSensors();
 			System.out.println("Car unparked. Meet at the pin location");
 			break;
 
 		default:
 			break;
+		}	
+	}
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		String finalCarState = "";
+		Controller controller = new Controller();	
+		Location userLocation = new Location(29.11,11.88); 
+		if(args[0].equalsIgnoreCase("park")) {
+			controller.cmd = "Park";
+			controller.slotEvalAttempt = Integer.parseInt(args[1]);
+			finalCarState = park(controller);
 		}
-
+		else if(args[0].equalsIgnoreCase("unpark")) {
+			controller.cmd = "Unpark";
+			controller.finalLocation = new Location(Double.parseDouble(args[1]),Double.parseDouble(args[2]));
+			finalCarState = controller.drive("Un-park", controller.finalLocation);
+		}
+		else {
+			System.out.println("Command invalid. Please try again!");
+			return;
+		}
+		controller.terminate(finalCarState,userLocation);
 	}
 
 }

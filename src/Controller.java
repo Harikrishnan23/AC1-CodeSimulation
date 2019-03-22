@@ -1,18 +1,17 @@
 import java.util.Random;
-import java.util.Scanner;
 
 public class Controller {
 	public ImageProcessor imageProcessor;
 	private SignalProcessor signalProcessor;
 	private PostProcessor postProcessor;
-	private VehicleSystem vehicleSystem;
+	public VehicleSystem vehicleSystem;
 	private LIDAR lidar;
 	private Cameras cameras;
 	private ProximitySensors proximitySensors;
 	private String carState;
 	// created for simulation
 	public Location finalLocation;
-	private int locationIndex;
+	public int locationIndex;
 	private int randomVar;
 	public String cmd = "";
 	public int slotEvalAttempt = -1;
@@ -53,8 +52,11 @@ public class Controller {
 		 * sensors and car's current location. For simulation, we are fixing the range
 		 * of index within which we set specific values to drive/park the car
 		 */
-
-		if (this.locationIndex < 14) {
+		
+		if(this.locationIndex == 0) {
+			this.carState = "";
+		}
+		else if (this.locationIndex < 14) {
 			this.carState = "Driving";
 		} else if (this.locationIndex == 14) {
 			this.carState = "Slot_Reached";
@@ -125,7 +127,7 @@ public class Controller {
 		boolean slotEvaluated = false;
 		Status status = new Status();
 		String lastDecision = "";
-		while (currentCarLocation != location) {
+		while (!currentCarLocation.equals(location)) {
 			// send last decision for new status if decisionIndex > 0
 
 			status = (this.locationIndex == 14 || this.locationIndex == 20) ? new Status("Stop", 0.0, 0.0)
@@ -156,7 +158,7 @@ public class Controller {
 				break;
 			}
 			this.setCarState();
-			if (expectedCarState.equalsIgnoreCase("Parked") && slotEvaluated == false) {
+			if (slotEvaluated == false && expectedCarState.equalsIgnoreCase("Parked")) {
 				if (this.carState.equalsIgnoreCase("Slot_Reached")) {
 					System.out.println("Slot Reached. Stop");
 					System.out.println("Evaluate the slot reached");

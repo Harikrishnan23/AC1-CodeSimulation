@@ -3,6 +3,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+//please note that in all the associations, the numbers signify the line numbers in controller.java file
+
 import org.junit.*;
 public class AllUsesTests {
 	@Test

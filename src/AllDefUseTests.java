@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.*;
 import static org.mockito.Mockito.*;
 
+//please note that in all the associations, the numbers signify the line numbers in controller.java file
 public class AllDefUseTests {
 	@Test
 	public void testFinalCarStateDefUse1() {

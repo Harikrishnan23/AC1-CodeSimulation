@@ -105,6 +105,7 @@ public class Controller {
 				// when randomInt is 2, then stop due to collision
 				status.gear = "";
 			}
+			System.out.println("Random int is "+randomInt + " and gear is "+status.gear);
 
 		}
 		if (!status.gear.isEmpty()) {

@@ -1,16 +1,14 @@
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
 import java.io.PrintStream;
 
 import org.junit.Test;
 
-public class DecisionTests {
+public class AllPairsTest {
 	@Test
 	// verifying gear decision system when lastDecision = "Reverse" and random
 	// variable is 0/1/2
@@ -56,7 +54,7 @@ public class DecisionTests {
 			System.setOut(stdout);
 		}
 	}
-
+	
 	@Test
 	// verifying evaluateSlot method call when expectedCarState = "Parked" and
 	// slotEvaluated = false
@@ -80,28 +78,4 @@ public class DecisionTests {
 		verify(controllerSpy, times(0)).evaluateSlot(finalLocation);
 	}
 
-	@Test
-	public void testMaxSlot0() {
-		System.out.println("\n***Test 5***");
-		Controller controller = new Controller();
-		Location[] allPossibleLocations = new Location[0];
-		controller.imageProcessor.setLocations(allPossibleLocations);
-		Controller controllerSpy = spy(controller);
-		Controller.park(controllerSpy);
-		verify(controllerSpy, times(0)).drive("Parked", new Location());
-
-	}
-
-	@Test
-	public void testMaxSlot1() {
-		System.out.println("\n***Test 6***");
-		Controller controller = new Controller();
-		Location[] allPossibleLocations = { new Location(26.87, 98.71) };
-		controller.imageProcessor.setLocations(allPossibleLocations);
-		controller.slotEvalAttempt = -1;
-		Controller controllerSpy = spy(controller);
-		Controller.park(controllerSpy);
-		verify(controllerSpy, times(3)).drive("Parked", new Location(26.87, 98.71));
-
-	}
 }
